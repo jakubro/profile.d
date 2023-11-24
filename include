@@ -1,0 +1,41 @@
+#!/bin/bash
+
+__profile_d_load__() {
+
+  local path=$1
+
+  if [ -f "$path" ]; then
+
+    if [ "$(basename "$path")" != README.md ]; then
+      \. "$path"
+    fi
+
+  elif [ -d "$path" ]; then
+
+    local source
+
+    for source in "$path"/*; do
+      __profile_d_load__ "$source"
+    done
+
+  fi
+
+}
+
+__profile_d_load_stage__() {
+
+  local stage=$1
+
+  __profile_d_load__ ~/.profile.d/lib/"$stage"
+
+  if [ -d ~/.profile.d/plugins ]; then
+
+    local plugin
+
+    for plugin in ~/.profile.d/plugins/*; do
+      __profile_d_load__ "${plugin}/${stage}"
+    done
+
+  fi
+
+}

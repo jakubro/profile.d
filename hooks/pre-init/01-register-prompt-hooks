@@ -1,0 +1,26 @@
+#!/bin/bash
+
+if [[ $- == *i* ]]; then
+
+  __profile_d_pre_prompt_hook__() {
+    __profile_d_load_stage__ hooks/pre-prompt
+  }
+
+  __profile_d_post_prompt_hook__() {
+    __profile_d_load_stage__ hooks/post-prompt
+  }
+
+  if [ -z "$__PROFILE_D_INITIAL_PROMPT_COMMAND__" ]; then
+    export __PROFILE_D_INITIAL_PROMPT_COMMAND__=("${PROMPT_COMMAND[@]}")
+  fi
+
+  export -f __profile_d_pre_prompt_hook__
+  export -f __profile_d_post_prompt_hook__
+
+  export PROMPT_COMMAND=(
+    "__profile_d_pre_prompt_hook__"
+    "${__PROFILE_D_INITIAL_PROMPT_COMMAND__[@]}"
+    "__profile_d_post_prompt_hook__"
+  )
+
+fi

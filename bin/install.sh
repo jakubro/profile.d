@@ -255,6 +255,5 @@ export -f log_header
 export -f log_debug
 export -f log_info
 export -f log_warn
-export -f mklink
 
 main

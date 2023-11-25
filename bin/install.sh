@@ -19,6 +19,7 @@ main() {
 
   install_lib
   install_plugins
+  uninstall_plugins
 
   log_header "Successfully installed"
 
@@ -66,6 +67,48 @@ install_plugins() {
     fi
 
   done
+
+}
+
+uninstall_plugins() {
+
+  log_header "Uninstalling plugins"
+
+  local requested=()
+
+  for plugin in "${PLUGINS[@]}"; do
+
+    local name
+    name=$(basename "$plugin")
+
+    requested+=("$name")
+
+  done
+
+  if [ -d ~/.profile.d/plugins ]; then
+
+    local plugin
+
+    for plugin in ~/.profile.d/plugins/*; do
+
+      local name
+      name=$(basename "$plugin")
+
+      if [[ " ${requested[*]} " != *" ${name} "* ]]; then
+
+        log_info "Uninstalling plugin ${name}..."
+
+        if [ -L "$plugin" ]; then
+          unlink "$plugin"
+        else
+          rm -rf "$plugin"
+        fi
+
+      fi
+
+    done
+
+  fi
 
 }
 
@@ -206,11 +249,13 @@ mklink() {
 
   if [ -L "$target" ]; then
 
-    command unlink "$target"
+    unlink "$target"
 
   elif [ -e "$target" ]; then
 
-    if ! has_flag -f "$*"; then
+    if has_flag -f "$*"; then
+      rm -rf "$target"
+    else
       rm_backup "$target"
     fi
 
@@ -218,7 +263,7 @@ mklink() {
 
   (
     cd "$target_dir"
-    command ln -sfv "$source" "$target_name"
+    ln -sfv "$source" "$target_name"
   )
 
 }
@@ -232,7 +277,7 @@ rm_backup() {
     path=$(realpath "$path")
     local backup="${path}.backup.${TIMESTAMP}"
 
-    command mv -fv "$path" "$backup"
+    mv -fv "$path" "$backup"
 
   fi
 
@@ -243,9 +288,7 @@ has_flag() {
   local value=$1
   shift
 
-  local flags=" $* "
-
-  [[ ${flags} == *" ${value} "* ]]
+  [[ " $* " == *" ${value} "* ]]
 
 }
 

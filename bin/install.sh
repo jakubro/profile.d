@@ -1,25 +1,38 @@
 #!/bin/bash
-set -eo pipefail
+set -o pipefail
 
 # To install: curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install.sh | bash
 
 LOCATION=https://github.com/jakubro/profile.d
-TIMESTAMP=$(date +%s)
+TIMESTAMP=$(date +%s) || exit 1
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-  SCRIPT_DIR=$(dirname "$(realpath "$0")")
-  LOCATION=$(realpath "$SCRIPT_DIR"/..)
+  SCRIPT_DIR=$(dirname "$(realpath "$0")") || exit 1
+  LOCATION=$(realpath "$SCRIPT_DIR"/..) || exit 1
 fi
+
+if [ -e ~/.profiledrc ]; then
+  \. ~/.profiledrc || echo "Failed to process ~/.profiledrc"
+fi
+
+PLUGIN_REMOTES=("${PLUGINS[@]}")
+PLUGIN_NAMES=()
+
+for _plugin in "${PLUGINS[@]}"; do
+  _name=$(basename "$_plugin") || exit 1
+  PLUGIN_NAMES+=("$_name")
+done
 
 # Main
 
 main() {
 
-  cd ~
+  cd ~ || return 1
 
-  install_lib
-  install_plugins
-  uninstall_plugins
+  install_prerequisites || return 1
+  install_lib || return 1
+  install_plugins || return 1
+  uninstall_plugins || return 1
 
   log_header "Successfully installed"
 
@@ -28,7 +41,73 @@ main() {
 
 }
 
-# Lib
+# profile.d
+
+install_prerequisites() {
+
+  if has curl && has git; then
+    return 0
+  fi
+
+  local prefix=""
+  if has sudo; then
+    prefix="sudo"
+  fi
+
+  # Fedora derivatives
+
+  if has dnf; then
+
+    $prefix dnf install -y curl git || return 1
+
+  elif has yum; then
+
+    $prefix yum install -y curl git || return 1
+
+  # Debian derivatives
+
+  elif has apt; then
+
+    $prefix apt update -y &&
+      $prefix apt install -y curl git || return 1
+
+  elif has apt-get; then
+
+    $prefix apt-get update -y &&
+      $prefix apt-get install -y curl git || return 1
+
+  # Arch Linux
+
+  elif has pacman; then
+
+    $prefix pacman -S --needed curl git || return 1
+
+  # Alpine
+
+  elif has apk; then
+
+    $prefix apk add curl git || return 1
+
+  # SUSE
+
+  elif has zypper; then
+
+    $prefix zypper install -y curl git || return 1
+
+  # macOS
+
+  elif has brew; then
+
+    $prefix brew install curl git || return 1
+
+  else
+
+    echo "Cannot install curl and git. Please install them manually."
+    return 1
+
+  fi
+
+}
 
 install_lib() {
 
@@ -36,35 +115,24 @@ install_lib() {
   local local=~/.profile.d/lib
 
   if [ -e ~/.profile.d ] && [ ! -d ~/.profile.d ]; then
-    rm_backup ~/.profile.d
+    rm_backup ~/.profile.d || return 1
   fi
 
-  install_dir "$remote" "$local"
-  link_dotfiles "$local"
+  install_dir "$remote" "$local" || return 1
+  link_dotfiles "$local" || return 1
+  write_rc_file || return 1
 
 }
 
 install_plugins() {
 
-  if [ -e ~/.profiledrc ]; then
-    \. ~/.profiledrc
-  fi
+  mkdir -p ~/.profile.d/plugins || return 1
 
-  local remote
+  local remote=""
 
-  for remote in "${PLUGINS[@]}"; do
+  for remote in "${PLUGIN_REMOTES[@]}"; do
 
-    local name
-    name=$(basename "$remote")
-
-    local local=~/.profile.d/plugins/"$name"
-
-    install_dir "$remote" "$local"
-    link_dotfiles "$local"
-
-    if [ -e "$local"/bin/install.sh ]; then
-      /bin/bash "$local"/bin/install.sh
-    fi
+    install_plugin "$remote" || log_error "Failed to install ${remote}"
 
   done
 
@@ -74,39 +142,92 @@ uninstall_plugins() {
 
   log_header "Uninstalling plugins"
 
-  local requested=()
+  local local=""
 
-  for plugin in "${PLUGINS[@]}"; do
+  for local in ~/.profile.d/plugins/*; do
 
-    local name
-    name=$(basename "$plugin")
-
-    requested+=("$name")
+    uninstall_plugin "$local" || log_error "Failed to uninstall ${local}"
 
   done
 
-  if [ -d ~/.profile.d/plugins ]; then
+}
 
-    local plugin
+install_plugin() {
 
-    for plugin in ~/.profile.d/plugins/*; do
+  local remote=$1
 
-      local name
-      name=$(basename "$plugin")
+  local name
+  name=$(basename "$remote") || return 1
 
-      if [[ " ${requested[*]} " != *" ${name} "* ]]; then
+  local local=~/.profile.d/plugins/"$name"
 
-        log_info "Uninstalling plugin ${name}..."
+  install_dir "$remote" "$local" || return 1
+  link_dotfiles "$local" || return 1
 
-        if [ -L "$plugin" ]; then
-          unlink "$plugin"
-        else
-          rm -rf "$plugin"
-        fi
+  if [ -e "$local"/bin/install.sh ]; then
+    /bin/bash "$local"/bin/install.sh || return 1
+  fi
 
-      fi
+}
 
-    done
+uninstall_plugin() {
+
+  local local=$1
+
+  local name
+  name=$(basename "$local") || return 1
+
+  if [[ " ${PLUGIN_NAMES[*]} " != *" ${name} "* ]]; then
+
+    log_info "Uninstalling plugin ${name}..."
+
+    if [ -L "$local" ]; then
+      unlink "$local" || return 1
+    else
+      rm -rf "$local" || return 1
+    fi
+
+  fi
+
+}
+
+install_dir() {
+
+  local remote=$1
+  local local=$2
+
+  local name
+  name=$(basename "$remote") || return 1
+
+  local local_parent
+  local_parent=$(dirname "$local") || return 1
+
+  log_header "${name}"
+
+  mkdir -p "$local_parent" || return 1
+
+  if is_uri "$remote"; then
+
+    if [ ! -e "$local" ]; then
+
+      log_info "Installing from ${remote}..."
+      git clone --quiet "$remote" "$local" || return 1
+
+    else
+      (
+
+        log_info "Updating ${name}..."
+
+        cd "$local" || return 1
+        git pull --quiet || return 1
+
+      )
+    fi
+
+  else
+
+    log_info "Installing from ${remote}..."
+    mklink "$remote" "$local" -f || return 1
 
   fi
 
@@ -123,60 +244,41 @@ link_dotfiles() {
     find "$dir" -mindepth 1 -maxdepth 1 ! -name README.md -print0 |
       while IFS= read -r -d "" file; do
 
-        source=$(basename "$file")
+        source=$(basename "$file") || return 1
         target=${source%.private}
 
-        mklink "${dir}/${source}" ~/"$target"
+        mklink "${dir}/${source}" ~/"$target" || return 1
 
-      done
+      done || return 1
 
   fi
 
 }
 
-install_dir() {
+write_rc_file() {
 
-  local remote=$1
-  local local=$2
+  if [ ! -f ~/.profiledrc ]; then
 
-  local name
-  name=$(basename "$remote")
+    cat <<EOF >~/.profiledrc || return 1
+#!/bin/bash
+# https://github.com/jakubro/profile.d
 
-  local local_parent
-  local_parent=$(dirname "$local")
-
-  log_header "Installing ${name}"
-
-  mkdir -p "$local_parent"
-
-  if is_uri "$remote"; then
-
-    if [ ! -e "$local" ]; then
-
-      log_info "Installing from ${remote}..."
-      git clone "$remote" "$local"
-
-    else
-      (
-
-        log_info "Updating ${name}..."
-
-        cd "$local"
-        git pull
-
-      )
-    fi
-
-  else
-
-    log_info "Installing from ${remote}..."
-    mklink "$remote" "$local" -f
+PLUGINS=()
+EOF
 
   fi
 
 }
 
 # Utils
+
+has() {
+  command -v "$@" &>/dev/null
+}
+
+is_uri() {
+  grep -qE '^[^ ]+://.+$' <<<"$1"
+}
 
 log_header() {
 
@@ -227,12 +329,6 @@ log_error() {
 
 }
 
-is_uri() {
-
-  grep -qE '^[^ ]+://.+$' <<<"$1"
-
-}
-
 mklink() {
 
   local source=$1
@@ -242,28 +338,28 @@ mklink() {
   shift
 
   local target_dir
-  target_dir=$(dirname "$target")
+  target_dir=$(dirname "$target") || return 1
 
   local target_name
-  target_name=$(basename "$target")
+  target_name=$(basename "$target") || return 1
 
   if [ -L "$target" ]; then
 
-    unlink "$target"
+    unlink "$target" || return 1
 
   elif [ -e "$target" ]; then
 
     if has_flag -f "$*"; then
-      rm -rf "$target"
+      rm -rf "$target" || return 1
     else
-      rm_backup "$target"
+      rm_backup "$target" || return 1
     fi
 
   fi
 
   (
-    cd "$target_dir"
-    ln -sfv "$source" "$target_name"
+    cd "$target_dir" || return 1
+    ln -sfv "$source" "$target_name" || return 1
   )
 
 }
@@ -274,10 +370,10 @@ rm_backup() {
 
   if [ -e "$path" ]; then
 
-    path=$(realpath "$path")
+    path=$(realpath "$path") || return 1
     local backup="${path}.backup.${TIMESTAMP}"
 
-    mv -fv "$path" "$backup"
+    mv -fv "$path" "$backup" || return 1
 
   fi
 

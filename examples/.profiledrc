@@ -1,0 +1,12 @@
+#!/bin/bash
+# https://github.com/jakubro/profile.d
+
+PLUGINS=(
+  https://github.com/jakubro/profile.d-autojump
+  https://github.com/jakubro/profile.d-direnv
+  https://github.com/jakubro/profile.d-hstr
+  https://github.com/jakubro/profile.d-jakub-dotfiles
+  https://github.com/jakubro/profile.d-liquidprompt
+  https://github.com/jakubro/profile.d-nvm
+  https://github.com/jakubro/profile.d-pyenv
+)

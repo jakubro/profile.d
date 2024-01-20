@@ -3,44 +3,6 @@ set -o pipefail
 
 # To install: curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install.sh | bash
 
-LOCATION=https://github.com/jakubro/profile.d
-TIMESTAMP=$(date +%s) || exit 1
-
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-  SCRIPT_DIR=$(dirname "$(realpath "$0")") || exit 1
-  LOCATION=$(realpath "$SCRIPT_DIR"/..) || exit 1
-fi
-
-if [ -e ~/.profiledrc ]; then
-  \. ~/.profiledrc || echo "Failed to process ~/.profiledrc"
-fi
-
-PLUGIN_REMOTES=("${PLUGINS[@]}")
-PLUGIN_NAMES=()
-
-for _plugin in "${PLUGINS[@]}"; do
-  _name=$(basename "$_plugin") || exit 1
-  PLUGIN_NAMES+=("$_name")
-done
-
-# Main
-
-main() {
-
-  cd ~ || return 1
-
-  install_prerequisites || return 1
-  install_lib || return 1
-  install_plugins || return 1
-  uninstall_plugins || return 1
-
-  log_header "Successfully installed"
-
-  log_info "Run the following command for the changes to take effect:"
-  log_info "  \. ~/.bashrc"
-
-}
-
 # profile.d
 
 install_prerequisites() {
@@ -68,13 +30,13 @@ install_prerequisites() {
 
   elif has apt; then
 
-    $prefix apt update -y &&
-      $prefix apt install -y curl git || return 1
+    $prefix apt update -y \
+      && $prefix apt install -y curl git || return 1
 
   elif has apt-get; then
 
-    $prefix apt-get update -y &&
-      $prefix apt-get install -y curl git || return 1
+    $prefix apt-get update -y \
+      && $prefix apt-get install -y curl git || return 1
 
   # Arch Linux
 
@@ -109,9 +71,32 @@ install_prerequisites() {
 
 }
 
+get_lib_remote() {
+
+  if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+
+    # installing using curl
+
+    echo https://github.com/jakubro/profile.d
+
+  else
+
+    # running locally - ./install.sh
+
+    local script_dir
+    script_dir=$(dirname "$(realpath "$0")") || return 1
+
+    realpath "$script_dir"/.. || return 1
+
+  fi
+
+}
+
 install_lib() {
 
-  local remote=$LOCATION
+  local remote
+  remote=$(get_lib_remote) || return 1
+
   local local=~/.profile.d/lib
 
   if [ -e ~/.profile.d ] && [ ! -d ~/.profile.d ]; then
@@ -126,11 +111,15 @@ install_lib() {
 
 install_plugins() {
 
+  if [ -e ~/.profiledrc ]; then
+    \. ~/.profiledrc || echo "Failed to read ~/.profiledrc"
+  fi
+
   mkdir -p ~/.profile.d/plugins || return 1
 
-  local remote=""
+  local remote
 
-  for remote in "${PLUGIN_REMOTES[@]}"; do
+  for remote in "${PLUGINS[@]}"; do
 
     install_plugin "$remote" || log_error "Failed to install ${remote}"
 
@@ -142,11 +131,11 @@ uninstall_plugins() {
 
   log_header "Uninstalling plugins"
 
-  local local=""
+  local path
 
-  for local in ~/.profile.d/plugins/*; do
+  for path in ~/.profile.d/plugins/*; do
 
-    uninstall_plugin "$local" || log_error "Failed to uninstall ${local}"
+    uninstall_plugin "$path" || log_error "Failed to uninstall ${path}"
 
   done
 
@@ -172,19 +161,35 @@ install_plugin() {
 
 uninstall_plugin() {
 
-  local local=$1
+  local path=$1
 
   local name
-  name=$(basename "$local") || return 1
+  name=$(basename "$path") || return 1
 
-  if [[ " ${PLUGIN_NAMES[*]} " != *" ${name} "* ]]; then
+  if [ -e ~/.profiledrc ]; then
+    \. ~/.profiledrc || echo "Failed to read ~/.profiledrc"
+  fi
+
+  local remote
+  local plugin_names=()
+
+  for remote in "${PLUGINS[@]}"; do
+
+    local name
+    name=$(basename "$remote") || return 1
+
+    plugin_names+=("$name")
+
+  done
+
+  if [[ " ${plugin_names[*]} " != *" ${name} "* ]]; then
 
     log_info "Uninstalling plugin ${name}..."
 
-    if [ -L "$local" ]; then
-      unlink "$local" || return 1
+    if [ -L "$path" ]; then
+      unlink "$path" || return 1
     else
-      rm -rf "$local" || return 1
+      rm -rf "$path" || return 1
     fi
 
   fi
@@ -241,8 +246,8 @@ link_dotfiles() {
 
     log_info "Linking dotfiles into home directory..."
 
-    find "$dir" -mindepth 1 -maxdepth 1 ! -name README.md -print0 |
-      while IFS= read -r -d "" file; do
+    find "$dir" -mindepth 1 -maxdepth 1 ! -name README.md -print0 \
+      | while IFS= read -r -d "" file; do
 
         source=$(basename "$file") || return 1
         target=${source%.private}
@@ -272,14 +277,6 @@ EOF
 
 # Utils
 
-has() {
-  command -v "$@" &>/dev/null
-}
-
-is_uri() {
-  grep -qE '^[^ ]+://.+$' <<<"$1"
-}
-
 log_header() {
 
   local blue="\e[94m"
@@ -293,6 +290,8 @@ log_header() {
 
 }
 
+export -f log_header
+
 log_debug() {
 
   local gray="\e[90m"
@@ -301,6 +300,8 @@ log_debug() {
   echo -e "${gray}${*}${endcolor}"
 
 }
+
+export -f log_debug
 
 log_info() {
 
@@ -311,6 +312,8 @@ log_info() {
 
 }
 
+export -f log_info
+
 log_warn() {
 
   local yellow="\e[93m"
@@ -320,14 +323,30 @@ log_warn() {
 
 }
 
+export -f log_warn
+
 log_error() {
 
   local red="\e[31m"
   local endcolor="\e[0m"
 
-  echo 1>&2 -e "${red}${*}${endcolor}"
+  echo >&2 -e "${red}${*}${endcolor}"
 
 }
+
+export -f log_error
+
+has() {
+  command -v "$@" &>/dev/null
+}
+
+export -f has
+
+is_uri() {
+  grep -qE '^[^ ]+://.+$' <<<"$1"
+}
+
+export -f is_uri
 
 mklink() {
 
@@ -364,20 +383,26 @@ mklink() {
 
 }
 
+export -f mklink
+
 rm_backup() {
 
   local path=$1
+  local timestamp
 
   if [ -e "$path" ]; then
 
     path=$(realpath "$path") || return 1
-    local backup="${path}.backup.${TIMESTAMP}"
+    timestamp=$(date +%s) || return 1
+    local backup="${path}.backup.${timestamp}"
 
     mv -fv "$path" "$backup" || return 1
 
   fi
 
 }
+
+export -f rm_backup
 
 has_flag() {
 
@@ -388,11 +413,24 @@ has_flag() {
 
 }
 
+export -f has_flag
+
 # Main
 
-export -f log_header
-export -f log_debug
-export -f log_info
-export -f log_warn
+main() {
+
+  cd ~ || return 1
+
+  install_prerequisites || return 1
+  install_lib || return 1
+  install_plugins || return 1
+  uninstall_plugins || return 1
+
+  log_header "Successfully installed"
+
+  log_info "Run the following command for the changes to take effect:"
+  log_info "  \. ~/.bashrc"
+
+}
 
 main

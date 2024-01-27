@@ -19,11 +19,11 @@ Examples:
   exit 1
 fi
 
-echo "$root_dir"
+echo "root dir: $root_dir"
 
 docker run \
   --rm \
   -v "$root_dir":"$root_dir" \
   -it \
   "$1" \
-  "$script_dir"/test-install-entrypoint.sh
+  "$script_dir"/test-entrypoint.sh

@@ -1,9 +1,28 @@
 #!/bin/bash
 
+log_header() {
+
+  local yellow="\e[93m"
+  local endcolor="\e[0m"
+
+  echo -ne "$yellow"
+  echo "###########################################################################################"
+  echo "###########################################################################################"
+  echo "##"
+  echo "## ${*}"
+  echo "##"
+  echo "###########################################################################################"
+  echo "###########################################################################################"
+  echo -ne "$endcolor"
+
+}
+
 script_dir=$(dirname "$(realpath "$0")") || exit 1
 root_dir=$(realpath "$script_dir"/../..) || exit 1
 
 cd ~ || exit 1
+
+log_header "Installing prerequisites"
 
 if command -v dnf &>/dev/null; then
 
@@ -37,12 +56,18 @@ else
 
 fi
 
+log_header "Testing installation"
+
 PLUGIN_SOURCE="$root_dir"/plugins envsubst <"$script_dir"/.profiledrc >~/.profiledrc || exit 1
 /bin/bash "$root_dir"/lib/bin/install.sh || exit 1
+
+log_header "Testing loading"
 
 set -o allexport
 \. ~/.bashrc || exit 1
 set +o allexport
+
+log_header "Testing direnv"
 
 cp "$script_dir"/.envrc ~/.envrc || exit 1
 direnv allow ~/.envrc || exit 1

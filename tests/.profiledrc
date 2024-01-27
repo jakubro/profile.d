@@ -1,0 +1,10 @@
+#!/bin/bash
+
+PLUGINS=(
+  "$PLUGIN_SOURCE/profile.d-autojump"
+  "$PLUGIN_SOURCE/profile.d-direnv"
+  "$PLUGIN_SOURCE/profile.d-hstr"
+  "$PLUGIN_SOURCE/profile.d-liquidprompt"
+  "$PLUGIN_SOURCE/profile.d-nvm"
+  "$PLUGIN_SOURCE/profile.d-pyenv"
+)

@@ -249,10 +249,9 @@ link_dotfiles() {
     find "$dir" -mindepth 1 -maxdepth 1 ! -name README.md -print0 \
       | while IFS= read -r -d "" file; do
 
-        source=$(basename "$file") || return 1
-        target=${source%.private}
+        path=$(basename "$file") || return 1
 
-        mklink "${dir}/${source}" ~/"$target" || return 1
+        mklink "${dir}/${path}" ~/"$path" || return 1
 
       done || return 1
 

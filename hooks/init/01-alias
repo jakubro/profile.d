@@ -1,0 +1,3 @@
+#!/bin/bash
+
+alias profile.d-update="~/.profile.d/lib/bin/install.sh"

@@ -17,7 +17,7 @@ guidance on developing new plugins.
 To install the dotfiles management system, run the following commands in your terminal:
 
 ```bash
-curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install | /bin/bash
+curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install | bash
 \. ~/.bashrc
 ```
 

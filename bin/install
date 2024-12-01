@@ -1,7 +1,15 @@
 #!/bin/bash
 set -o pipefail
 
-# To install: curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install | /bin/bash
+# To install: curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install | bash
+
+# profile.d
+
+GIT_SOURCE_PATH=https://github.com/jakubro/profile.d
+
+INSTALL_PATH=~/.profile.d
+LIB_PATH="${INSTALL_PATH}/lib"
+PLUGINS_PATH="${INSTALL_PATH}/plugins"
 
 # profile.d
 
@@ -73,18 +81,18 @@ install_prerequisites() {
 
 get_lib_remote() {
 
-  if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+  if [ -z "${BASH_SOURCE[0]}" ]; then
 
-    # installing using curl
-
-    echo https://github.com/jakubro/profile.d
+    # piping the fetched script into bash
+    echo "$GIT_SOURCE_PATH"
 
   else
 
-    # running locally - ./install
+    # either executing a local copy of the script:  "${BASH_SOURCE[0]}" = "$0"
+    # or sourcing the script:  "${BASH_SOURCE[0]}" != "$0"
 
     local script_dir
-    script_dir=$(dirname "$(realpath "$0")") || return 1
+    script_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")") || return 1
 
     realpath "$script_dir"/.. || return 1
 
@@ -97,10 +105,10 @@ install_lib() {
   local remote
   remote=$(get_lib_remote) || return 1
 
-  local local=~/.profile.d/lib
+  local local=$LIB_PATH
 
-  if [ -e ~/.profile.d ] && [ ! -d ~/.profile.d ]; then
-    rm_backup ~/.profile.d || return 1
+  if [ -e "$INSTALL_PATH" ] && [ ! -d "$INSTALL_PATH" ]; then
+    rm_backup "$INSTALL_PATH" || return 1
   fi
 
   install_dir "$remote" "$local" || return 1
@@ -115,7 +123,7 @@ install_plugins() {
     \. ~/.profiledrc || echo "Failed to read ~/.profiledrc"
   fi
 
-  mkdir -p ~/.profile.d/plugins || return 1
+  mkdir -p "$PLUGINS_PATH" || return 1
 
   local remote
 
@@ -133,7 +141,7 @@ uninstall_plugins() {
 
   local path
 
-  for path in ~/.profile.d/plugins/*; do
+  for path in "$PLUGINS_PATH"/*; do
 
     uninstall_plugin "$path" || log_error "Failed to uninstall ${path}"
 
@@ -148,7 +156,7 @@ install_plugin() {
   local name
   name=$(basename "$remote") || return 1
 
-  local local=~/.profile.d/plugins/"$name"
+  local local="${PLUGINS_PATH}/${name}"
 
   install_dir "$remote" "$local" || return 1
   link_dotfiles "$local" || return 1
@@ -265,7 +273,7 @@ write_rc_file() {
 
     cat <<EOF >~/.profiledrc || return 1
 #!/bin/bash
-# https://github.com/jakubro/profile.d
+# ${GIT_SOURCE_PATH}
 
 PLUGINS=()
 EOF
@@ -417,8 +425,6 @@ export -f has_flag
 # Main
 
 main() {
-
-  cd ~ || return 1
 
   install_prerequisites || return 1
   install_lib || return 1

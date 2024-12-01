@@ -17,7 +17,7 @@ guidance on developing new plugins.
 To install the dotfiles management system, run the following commands in your terminal:
 
 ```bash
-curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install.sh | bash
+curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install | bash
 \. ~/.bashrc
 ```
 
@@ -32,7 +32,7 @@ specify which plugins you want to install.
 Then run the following commands to apply the changes:
 
 ```bash
-profile.d-update
+profile.d-install
 \. ~/.bashrc
 ```
 
@@ -59,7 +59,7 @@ PLUGINS=(
 To update the dotfiles management system, run the following commands:
 
 ```bash
-profile.d-update
+profile.d-install
 \. ~/.bashrc
 ```
 
@@ -132,7 +132,7 @@ Create a new directory for your plugin, e.g. in `~/work/my-profile.d-plugin`.
 
 #### Step 2: Define Installation Script
 
-Inside your plugin directory, create a `bin/install.sh` file. This script should handle the installation logic for your
+Inside your plugin directory, create a `bin/install` file. This script should handle the installation logic for your
 plugin. For example:
 
 ```bash
@@ -173,7 +173,7 @@ PLUGINS=(
 Run the following command to install the plugin:
 
 ```bash
-profile.d-update
+profile.d-install
 \. ~/.bashrc
 ```
 

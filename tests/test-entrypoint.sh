@@ -59,7 +59,7 @@ fi
 log_header "Testing installation"
 
 PLUGIN_SOURCE="$root_dir"/plugins envsubst <"$script_dir"/.profiledrc >~/.profiledrc || exit 1
-/bin/bash "$root_dir"/lib/bin/install.sh || exit 1
+/bin/bash "$root_dir"/lib/bin/install || exit 1
 
 log_header "Testing loading"
 

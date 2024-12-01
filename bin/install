@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o pipefail
 
-# To install: curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install.sh | bash
+# To install: curl https://raw.githubusercontent.com/jakubro/profile.d/main/bin/install | bash
 
 # profile.d
 
@@ -81,7 +81,7 @@ get_lib_remote() {
 
   else
 
-    # running locally - ./install.sh
+    # running locally - ./install
 
     local script_dir
     script_dir=$(dirname "$(realpath "$0")") || return 1
@@ -153,8 +153,8 @@ install_plugin() {
   install_dir "$remote" "$local" || return 1
   link_dotfiles "$local" || return 1
 
-  if [ -e "$local"/bin/install.sh ]; then
-    /bin/bash "$local"/bin/install.sh || return 1
+  if [ -e "$local"/bin/install ]; then
+    /bin/bash "$local"/bin/install || return 1
   fi
 
 }

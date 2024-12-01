@@ -1,6 +1,6 @@
 #!/bin/bash
 
-\. ~/.profile.d/lib/include
+\. ~/.profile.d/lib/src/include
 
 __profile_d_load_stage__ hooks/pre-init
 __profile_d_load_stage__ hooks/init

@@ -137,8 +137,6 @@ install_plugins() {
 
 uninstall_plugins() {
 
-  log_header "Uninstalling plugins"
-
   local path
 
   for path in "$PLUGINS_PATH"/*; do

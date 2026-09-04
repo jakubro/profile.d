@@ -1,1 +1,4 @@
 *.private
+.astro/
+node_modules/
+site/dist/

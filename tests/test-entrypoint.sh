@@ -56,10 +56,25 @@ else
 
 fi
 
+log_header "Testing install script functions"
+
+"$script_dir"/test-install.sh || exit 1
+
+log_header "Testing prompt hook registration"
+
+"$script_dir"/test-prompt-hooks.sh || exit 1
+
 log_header "Testing installation"
 
 PLUGIN_SOURCE="$root_dir"/plugins envsubst <"$script_dir"/.profiledrc >~/.profiledrc || exit 1
 /bin/bash "$root_dir"/lib/bin/install || exit 1
+
+log_header "Testing update"
+
+# The install above ran from the checkout; this one runs the installed copy, which resolves to
+# itself. Nothing below would notice the tree being deleted, so assert it survived.
+/bin/bash ~/.profile.d/lib/bin/install || exit 1
+[ -r ~/.profile.d/lib/src/include ] || exit 1
 
 log_header "Testing loading"
 

@@ -81,20 +81,22 @@ install_prerequisites() {
 
 get_lib_remote() {
 
-  if [ -z "${BASH_SOURCE[0]}" ]; then
+  local source=${BASH_SOURCE[0]}
+  local root
 
-    # piping the fetched script into bash
-    echo "$GIT_SOURCE_PATH"
+  if [ -f "$source" ]; then
+    root=$(realpath "$(dirname "$source")"/.. 2>/dev/null)
+  fi
+
+  if [ -n "$root" ] && [ -f "${root}/src/include" ]; then
+
+    # executing or sourcing a local copy of the script
+    echo "$root"
 
   else
 
-    # either executing a local copy of the script:  "${BASH_SOURCE[0]}" = "$0"
-    # or sourcing the script:  "${BASH_SOURCE[0]}" != "$0"
-
-    local script_dir
-    script_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")") || return 1
-
-    realpath "$script_dir"/.. || return 1
+    # piping the fetched script into bash
+    echo "$GIT_SOURCE_PATH"
 
   fi
 
@@ -141,6 +143,8 @@ uninstall_plugins() {
 
   for path in "$PLUGINS_PATH"/*; do
 
+    [ -e "$path" ] || continue
+
     uninstall_plugin "$path" || log_error "Failed to uninstall ${path}"
 
   done
@@ -177,14 +181,14 @@ uninstall_plugin() {
   fi
 
   local remote
+  local plugin_name
   local plugin_names=()
 
   for remote in "${PLUGINS[@]}"; do
 
-    local name
-    name=$(basename "$remote") || return 1
+    plugin_name=$(basename "$remote") || return 1
 
-    plugin_names+=("$name")
+    plugin_names+=("$plugin_name")
 
   done
 
@@ -234,6 +238,10 @@ install_dir() {
 
       )
     fi
+
+  elif [ -e "$local" ] && [ "$(realpath "$remote")" = "$(realpath "$local")" ]; then
+
+    log_info "Already installed from ${remote}"
 
   else
 
@@ -436,4 +444,7 @@ main() {
 
 }
 
-main
+# The tests source this file to exercise single functions; every other caller installs.
+if [ -z "$PROFILE_D_DEFINE_ONLY" ]; then
+  main
+fi

@@ -18,7 +18,9 @@ if [[ $- == *i* ]]; then
 
   }
 
-  if [ -z "$__PROFILE_D_INITIAL_PROMPT_COMMAND__" ]; then
+  # Testing the first element instead would re-cache whenever PROMPT_COMMAND started out empty,
+  # by which point it holds the wrapped value - doubling both hooks on the first reload.
+  if ! declare -p __PROFILE_D_INITIAL_PROMPT_COMMAND__ &>/dev/null; then
     export __PROFILE_D_INITIAL_PROMPT_COMMAND__=("${PROMPT_COMMAND[@]}")
   fi
 

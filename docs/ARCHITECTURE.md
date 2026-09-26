@@ -41,7 +41,8 @@ Both hooks run before the prompt: bash evaluates the whole of `PROMPT_COMMAND` a
 1. `install_prerequisites` - ensures `git` and `curl`, through whichever of eight package managers is present.
 2. `install_lib` - resolves where profile.d itself should come from, puts it at `~/.profile.d/lib`, links `home/`,
    and writes `~/.profiledrc` if absent.
-3. `install_plugins` - sources `~/.profiledrc` and installs each entry of `PLUGINS`.
+3. `install_plugins` - sources `~/.profiledrc` and installs each entry of `PLUGINS` under its name - the part after
+   a `#`, else the last path segment. Two entries sharing a name stop the step before anything installs.
 4. `uninstall_plugins` - removes anything under `~/.profile.d/plugins/` that `PLUGINS` no longer names. The name it
    compares must not share a variable with the loop that collects the configured names: bash `local` is scoped to the
    function, so reusing it would leave the test comparing the last configured entry against itself, and nothing would

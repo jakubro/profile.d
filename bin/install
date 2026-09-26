@@ -128,6 +128,21 @@ install_plugins() {
   mkdir -p "$PLUGINS_PATH" || return 1
 
   local remote
+  local name
+  local names=()
+
+  for remote in "${PLUGINS[@]}"; do
+
+    name=$(plugin_name "$remote") || continue
+
+    if [[ " ${names[*]} " == *" ${name} "* ]]; then
+      log_error "Two PLUGINS entries install as ${name}; nothing was installed"
+      return 1
+    fi
+
+    names+=("$name")
+
+  done
 
   for remote in "${PLUGINS[@]}"; do
 
@@ -153,14 +168,14 @@ uninstall_plugins() {
 
 install_plugin() {
 
-  local remote=$1
+  local entry=$1
 
   local name
-  name=$(basename "$remote") || return 1
+  name=$(plugin_name "$entry") || return 1
 
   local local="${PLUGINS_PATH}/${name}"
 
-  install_dir "$remote" "$local" || return 1
+  install_dir "${entry%#*}" "$local" "$name" || return 1
   link_dotfiles "$local" || return 1
 
   if [ -e "$local"/bin/install ]; then
@@ -181,18 +196,18 @@ uninstall_plugin() {
   fi
 
   local remote
-  local plugin_name
-  local plugin_names=()
+  local configured
+  local configured_names=()
 
   for remote in "${PLUGINS[@]}"; do
 
-    plugin_name=$(basename "$remote") || return 1
+    configured=$(plugin_name "$remote") || return 1
 
-    plugin_names+=("$plugin_name")
+    configured_names+=("$configured")
 
   done
 
-  if [[ " ${plugin_names[*]} " != *" ${name} "* ]]; then
+  if [[ " ${configured_names[*]} " != *" ${name} "* ]]; then
 
     log_info "Uninstalling plugin ${name}..."
 
@@ -210,9 +225,7 @@ install_dir() {
 
   local remote=$1
   local local=$2
-
-  local name
-  name=$(basename "$remote") || return 1
+  local name=${3:-$(basename "$remote")}
 
   local local_parent
   local_parent=$(dirname "$local") || return 1
@@ -270,6 +283,27 @@ link_dotfiles() {
       done || return 1
 
   fi
+
+}
+
+# Print the directory name a PLUGINS entry installs as: the part after a '#', else the last path segment.
+plugin_name() {
+
+  local entry=$1
+  local name
+
+  if [[ $entry == *#* ]]; then
+    name=${entry##*#}
+  else
+    name=$(basename "$entry") || return 1
+  fi
+
+  if [[ ! $name =~ ^[A-Za-z0-9._-]+$ || $name == . || $name == .. ]]; then
+    log_error "Invalid plugin name '${name}' in ${entry}"
+    return 1
+  fi
+
+  echo "$name"
 
 }
 

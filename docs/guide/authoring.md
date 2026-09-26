@@ -120,6 +120,7 @@ files - `home/.direnvrc` claims one path, `home/.config` claims all of `~/.confi
 
 Push it anywhere `git clone` can reach and give people the URL to add to `PLUGINS`. The directory name profile.d uses
 is the last segment of that URL, and it is also what decides load order, so name the repository for what it does.
+A user can still install it under another name with [`#<name>`](plugins.md#naming-a-plugin).
 
 Your `README.md` is the only documentation a user gets, and the loader skips that filename wherever it appears - so
 you can put one in `hooks/init/` beside your hooks without it being sourced.

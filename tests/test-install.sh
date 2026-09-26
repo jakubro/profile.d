@@ -74,6 +74,55 @@ call_sourced install_dir "$target" "$target" >/dev/null 2>&1
 assert_equal "leaves a self-targeting install in place" "marker" "$(cat "$target"/src/include 2>&1)"
 assert_equal "leaves it a directory, not a symlink" "no" "$([ -L "$target" ] && echo yes || echo no)"
 
+echo "plugin_name"
+
+assert_equal "names a path entry by its last segment" "my-plugin" "$(call_sourced plugin_name /work/my-plugin)"
+assert_equal "names a URL entry by its last segment" "profile.d-pyenv" \
+  "$(call_sourced plugin_name https://x/profile.d-pyenv)"
+assert_equal "names an entry by the part after a '#'" "profile.d-dotfiles" \
+  "$(call_sourced plugin_name /work/dotfiles#profile.d-dotfiles)"
+assert_equal "rejects a name holding a '/'" "rejected" \
+  "$(call_sourced plugin_name '/work/dotfiles#a/b' >/dev/null 2>&1 && echo accepted || echo rejected)"
+assert_equal "rejects an empty name" "rejected" \
+  "$(call_sourced plugin_name '/work/dotfiles#' >/dev/null 2>&1 && echo accepted || echo rejected)"
+
+echo "install_plugin"
+
+# Install one entry into a throwaway home and print where the plugin directory points.
+run_install_plugin() {
+
+  local entry=$1
+  local name=$2
+
+  local home
+  home=$(mktemp -d) || return 1
+  mkdir -p "$home"/.profile.d/plugins || return 1
+
+  HOME=$home PROFILE_D_DEFINE_ONLY=1 \
+    bash -c '\. "$1" && install_plugin "$2"' _ "$install_script" "$entry" >/dev/null 2>&1
+  readlink "$home"/.profile.d/plugins/"$name"
+
+  rm -rf "$home"
+
+}
+
+source_dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$target" "$source_dir"' EXIT
+
+assert_equal "installs a path entry under the name after its '#'" "$source_dir" \
+  "$(run_install_plugin "${source_dir}#profile.d-dotfiles" profile.d-dotfiles)"
+
+echo "install_plugins"
+
+# Two entries resolving to one name would let the second install delete the first.
+home=$(mktemp -d) || exit 1
+printf '#!/bin/bash\nPLUGINS=(%s)\n' "${source_dir}#twin https://x/twin" >"$home"/.profiledrc || exit 1
+HOME=$home PROFILE_D_DEFINE_ONLY=1 \
+  bash -c '\. "$1" && install_plugins' _ "$install_script" >/dev/null 2>&1
+assert_equal "rejects two entries installing as one name" "1 " \
+  "$? $(ls -A "$home"/.profile.d/plugins)"
+rm -rf "$home"
+
 echo "uninstall_plugins"
 
 # Run uninstall_plugins against a throwaway home holding a .profiledrc and an installed plugin
@@ -124,6 +173,11 @@ assert_equal \
   "profile.d-direnv profile.d-pyenv" \
   "$(run_uninstall plugins 'https://x/profile.d-direnv https://x/profile.d-pyenv' \
     'profile.d-direnv profile.d-pyenv')"
+
+assert_equal \
+  "keeps a plugin under the name after its '#'" \
+  "profile.d-dotfiles" \
+  "$(run_uninstall plugins '/work/profile.d#profile.d-dotfiles' 'profile.d profile.d-dotfiles')"
 
 assert_equal \
   "removes everything when the config lists nothing" \

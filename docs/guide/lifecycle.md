@@ -44,7 +44,8 @@ expands `PS1`. `post-prompt` is post relative to the entries already in the arra
 
 Within one stage, profile.d loads **its own hooks first, then each plugin's, in alphabetical order of the plugin's
 directory name**. A plugin's directory name is the last path segment of its `~/.profiledrc` entry, so
-`https://github.com/jakubro/profile.d-nvm` becomes `profile.d-nvm`.
+`https://github.com/jakubro/profile.d-nvm` becomes `profile.d-nvm`, unless the entry ends in `#<name>` - see
+[naming a plugin](plugins.md#naming-a-plugin).
 
 With the six published plugins installed, every `init` hook in `profile.d-autojump` runs before every `init` hook in
 `profile.d-direnv`, and so on down to `profile.d-pyenv`.

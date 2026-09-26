@@ -40,6 +40,21 @@ The directory name under `~/.profile.d/plugins/` is the last segment of the entr
 [The hook lifecycle](lifecycle.md#the-ordering-rule) covers why, and why the order of lines in `~/.profiledrc` does
 not.
 
+## Naming a plugin
+
+End an entry with `#<name>` to install it under a name of your choosing:
+
+```bash
+PLUGINS=(
+  ~/work/dotfiles#profile.d-dotfiles
+)
+```
+
+The checkout at `~/work/dotfiles` installs as `~/.profile.d/plugins/profile.d-dotfiles` and loads in that name's
+place, so a working tree can live wherever suits you without changing when its hooks run. A name is letters, digits,
+`.`, `_` and `-`. An entry with any other name fails to install and stops removal for that run, and a
+`~/.profiledrc` in which two entries share a name installs nothing.
+
 ## Adding one
 
 Add the line, run the two commands above. Installation clones the plugin, symlinks anything in its `home/` directory
